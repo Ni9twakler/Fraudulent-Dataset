@@ -1,0 +1,116 @@
+---
+title: "Project R"
+output: html_notebook
+---
+
+Setting up environment, Library, 
+```{r}
+#IST 421: Project Code
+#dev.off()
+cat('\014') 
+rm(list=ls())
+
+# basic Rweka packages
+library(RWeka)       # Weka
+library(party)       # A computational toolbox for recursive partitioning
+library(partykit)    # A toolkit with infrastructure for representing, summarizing, 
+library(rsample)     #and visualizing tree-structured regression and classification models.
+
+# Helper packages
+library(dplyr)       # for data wrangling
+library(ggExtra)     # for maginal plots
+library(ggplot2)     # for awesome plotting
+
+# Modeling packages
+library(rpart)       # direct engine for decision tree application
+library(caret)       # meta engine for decision tree application
+library(AmesHousing) # dataset
+
+# Model interpretability packages
+library(rpart.plot)  # for plotting decision trees
+library(vip)         # for feature importance
+library(pdp)         # for feature effects
+
+library(varhandle)   #used to ungroup factors
+library(plyr)
+library(arules)
+library(arulesViz)
+library(tidyverse)
+library(lubridate)
+
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering algorithms & visualization
+library(gridExtra)  # subfigure layout package
+library(dendextend) # for comparing two dendrograms
+
+#install.packages('varhandle')
+setwd('~/Desktop/Classes/Spr 21/IST 421/Project/attachments/Fraud')
+```
+
+Data Cleansing, Testing and Training sets
+```{r}
+fraud_data_train <- fraudTrain
+fraud_data_test <- fraudTest
+
+#Clensing
+fraud_data_train$trans_date_trans_time <- strptime(fraud_data_train$trans_date_trans_time, '%Y-%m-%d %H:%M:%OS')
+fraud_data_train$trans_date_trans_time <- as.POSIXct(fraud_data_train$trans_date_trans_time)
+fraud_data_train$merchant <- gsub('fraud_', '',fraud_data_train$merchant)
+fraud_data_train$merchant <- factor(fraud_data_train$merchant)
+fraud_data_train$category <- factor(fraud_data_train$category) 
+fraud_data_train$lat <- as.double(fraud_data_train$lat)
+fraud_data_train$long <- as.double(fraud_data_train$long)
+fraud_data_train$job <- factor(fraud_data_train$job) #494 different jobs
+
+fraud_data_test$trans_date_trans_time <- strptime(fraud_data_test$trans_date_trans_time, '%Y-%m-%d %H:%M:%OS')
+fraud_data_test$trans_date_trans_time <- as.POSIXct(fraud_data_test$trans_date_trans_time)
+fraud_data_test$merchant <- gsub('fraud_', '',fraud_data_test$merchant)
+fraud_data_test$merchant <- factor(fraud_data_test$merchant)
+fraud_data_test$category <- factor(fraud_data_test$category) 
+fraud_data_test$job <- factor(fraud_data_test$job) #494 different jobs
+
+fraud_data_train <- na.omit(fraud_data_train)
+fraud_data_test <- na.omit(fraud_data_test)
+
+fraud <- fraud_data_train %>% filter(is_fraud == 1) %>%
+  select(trans_date_trans_time, merchant, category, amt, gender, city, city_pop, job, state, long, lat, merch_long, merch_lat)
+nFraud <- fraud_data_train %>% filter(is_fraud != 1 )%>%
+  select(trans_date_trans_time, merchant, category, amt, gender, city, city_pop, job, state, long, lat, merch_long, merch_lat)
+
+fraud_train <- lapply(fraud_data_train, as.factor)
+fraud_test <- lapply(fraud_data_test, as.factor)
+
+```
+
+Dollars Stolen grouped by category and (or) gender
+```{r}
+ggplot(fraud)+geom_boxplot(aes(y=amt, x=gender,fill=category, color= category)) +
+  ggtitle('Dollars Stolen grouped by Category and Gender') +ylab('Dollars Stolen')
+
+ggplot(fraud)+geom_boxplot(aes(y=amt,x=category, color=category, fill=category)) +
+  ggtitle('Dollars Stolen per Category')+theme(axis.text.x = element_text(angle=45,hjust = 1))
+```
+
+
+
+```{r}
+mapping <- merge(fraud_mapping,state.info, by="abbrev",all.x=T)
+mapping$long.x <- as.double(mapping$long.x)
+mapping$lat.x <- as.double(mapping$lat.x)
+
+ggplot()+geom_polygon(data= states, aes(long, lat, group=group), color= 'black', fill='white') +
+  geom_point(data= mapping, aes(long.x, lat.x, color=category)) +xlim(-125, -65) +ylim(c(23, 50))+
+  theme(axis.title = element_blank(), axis.ticks= element_blank(), axis.text = element_blank())+
+  ggtitle('Locations of Fraudulent Theft')
+```
+
+
+
+
+
+
+
+
+
+
+
